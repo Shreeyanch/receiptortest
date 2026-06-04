@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Your Receipt — Himalayan Coffee House</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --teal: #1D9E75;
+      --teal-light: #E8F7F1;
+      --teal-mid: #d0f0e4;
+      --teal-dark: #157a5a;
+      --bg: #F5F5F5;
+      --white: #ffffff;
+      --gray-100: #F9FAFB;
+      --gray-200: #F0F0F0;
+      --gray-300: #E0E0E0;
+      --gray-400: #BDBDBD;
+      --gray-500: #9E9E9E;
+      --gray-600: #757575;
+      --gray-700: #616161;
+      --gray-800: #424242;
+      --gray-900: #212121;
+      --green-text: #15803d;
+      --red-text: #dc2626;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--gray-900);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ─── Top Bar ─── */
+    .top-bar {
+      text-align: center;
+      padding: 28px 20px 12px;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 0.1s forwards;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--teal);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .brand-tagline {
+      font-size: 12px;
+      color: var(--gray-500);
+      font-weight: 400;
+      margin-top: 2px;
+      letter-spacing: 0.02em;
+    }
+
+    /* ─── NFC Pulse ─── */
+    .nfc-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin: 16px 0 8px;
+    }
+
+    .nfc-pulse-wrapper {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nfc-ring {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--teal);
+      opacity: 0;
+      animation: nfcPulse 2.4s ease-out infinite;
+    }
+
+    .nfc-ring:nth-child(2) { animation-delay: 0.8s; }
+    .nfc-ring:nth-child(3) { animation-delay: 1.6s; }
+
+    @keyframes nfcPulse {
+      0%   { transform: scale(0.5); opacity: 0.8; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+
+    .nfc-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--teal);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+
+    .nfc-icon svg {
+      width: 14px;
+      height: 14px;
+      fill: white;
+    }
+
+    .timestamp {
+      font-size: 11px;
+      color: var(--gray-500);
+      font-weight: 500;
+    }
+
+    /* ─── Page wrapper ─── */
+    .page {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 0 16px 40px;
+    }
+
+    /* ─── Receipt wrapper (captured for export) ─── */
+    #receipt-capture {
+      opacity: 0;
+      transform: translateY(28px);
+      animation: slideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.25s forwards;
+    }
+
+    @keyframes slideUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    /* ─── Cards ─── */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    /* ─── Shop Header Card ─── */
+    .shop-card {
+      padding: 20px 20px 16px;
+    }
+
+    .shop-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .shop-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--gray-900);
+      line-height: 1.2;
+      flex: 1;
+    }
+
+    .date-time {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .date-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .time-text {
+      font-size: 11px;
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+
+    .shop-badges {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-vat {
+      background: var(--teal-light);
+      color: var(--teal-dark);
+    }
+
+    .badge-vat svg {
+      width: 9px;
+      height: 9px;
+    }
+
+    .shop-divider {
+      border: none;
+      border-top: 1px dashed var(--gray-300);
+      margin: 14px 0;
+    }
+
+    .shop-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .meta-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--gray-400);
+    }
+
+    .meta-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .meta-text {
+      font-size: 12.5px;
+      color: var(--gray-600);
+      font-weight: 400;
+    }
+
+    .meta-text a {
+      color: var(--teal);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .receipt-id-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: var(--gray-100);
+      border-radius: var(--radius-sm);
+    }
+
+    .receipt-id-label {
+      font-size: 11px;
+      color: var(--gray-500);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .receipt-id-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gray-800);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--white);
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--gray-600);
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:active { transform: scale(0.94); background: var(--gray-200); }
+
+    .copy-btn svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    /* ─── Items Card ─── */
+    .items-card {
+      padding: 0;
+    }
+
+    .items-header {
+      padding: 16px 20px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .items-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .items-count {
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    .items-table {
+      padding: 0 20px;
+    }
+
+    .col-headers {
+      display: grid;
+      grid-template-columns: 1fr 48px 90px;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--gray-300);
+    }
+
+    .col-h {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .col-h:nth-child(2) { text-align: center; }
+    .col-h:nth-child(3) { text-align: right; }
+
+    .line-item {
+      display: grid;
+      grid-template-columns: 1fr 48px 90px;
+      gap: 8px;
+      padding: 11px 0;
+      border-bottom: 1px dashed var(--gray-200);
+      align-items: center;
+    }
+
+    .line-item:last-of-type {
+      border-bottom: none;
+    }
+
+    .item-name {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--gray-800);
+    }
+
+    .item-qty {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-500);
+      text-align: center;
+      background: var(--gray-100);
+      padding: 2px 0;
+      border-radius: 4px;
+    }
+
+    .item-price {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--gray-800);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ─── Totals section ─── */
+    .totals-section {
+      padding: 0 20px 4px;
+      margin-top: 4px;
+      border-top: 1px dashed var(--gray-300);
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .total-label {
+      font-size: 13px;
+      color: var(--gray-600);
+      font-weight: 400;
+    }
+
+    .total-value {
+      font-size: 13px;
+      color: var(--gray-700);
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .total-row.discount .total-label,
+    .total-row.discount .total-value {
+      color: var(--green-text);
+      font-weight: 600;
+    }
+
+    .total-row.discount .total-value::before {
+      content: '';
+    }
+
+    .totals-divider {
+      border: none;
+      border-top: 1px dashed var(--gray-300);
+      margin: 4px 0;
+    }
+
+    .grand-total-block {
+      margin: 0 20px 20px;
+      background: var(--teal-light);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .grand-total-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--teal-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .grand-total-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--teal);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.5px;
+    }
+
+    /* ─── Payment Card ─── */
+    .payment-card {
+      padding: 18px 20px;
+    }
+
+    .payment-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .pay-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pay-icon-wrap {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .pay-icon-wrap svg {
+      width: 18px;
+      height: 18px;
+      color: var(--gray-600);
+    }
+
+    .pay-label {
+      font-size: 10px;
+      color: var(--gray-400);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      line-height: 1.2;
+    }
+
+    .pay-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-top: 2px;
+    }
+
+    .payment-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-top: 14px;
+      border-top: 1px solid var(--gray-200);
+    }
+
+    .badge-verified {
+      background: var(--teal-light);
+      color: var(--teal-dark);
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-verified svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .badge-nfc {
+      background: #EEF2FF;
+      color: #4F46E5;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-nfc svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* ─── Receipt bottom watermark ─── */
+    .receipt-watermark {
+      padding: 14px 20px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border-top: 1px dashed var(--gray-200);
+      margin-top: 4px;
+    }
+
+    .watermark-text {
+      font-size: 10px;
+      color: var(--gray-400);
+      font-weight: 500;
+    }
+
+    .watermark-logo {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--teal);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ─── Action Buttons ─── */
+    .actions {
+      padding: 4px 0 0;
+      opacity: 0;
+      animation: fadeIn 0.4s ease 0.7s forwards;
+    }
+
+    .actions-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 15px 20px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      transition: transform 0.12s, box-shadow 0.12s, background 0.15s;
+      position: relative;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .btn-photo {
+      background: var(--teal);
+      color: white;
+      box-shadow: 0 4px 14px rgba(29, 158, 117, 0.35);
+    }
+
+    .btn-photo:active {
+      background: var(--teal-dark);
+      box-shadow: 0 2px 8px rgba(29, 158, 117, 0.25);
+    }
+
+    .btn-pdf {
+      background: white;
+      color: var(--teal);
+      border: 1.5px solid var(--teal);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-pdf:active {
+      background: var(--teal-light);
+    }
+
+    .btn-wallet {
+      background: var(--gray-200);
+      color: var(--gray-500);
+      cursor: default;
+      position: relative;
+    }
+
+    .btn-wallet:active {
+      transform: scale(0.98);
+    }
+
+    .coming-soon-badge {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--gray-400);
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .wallet-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gray-800);
+      color: white;
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 8px;
+      white-space: nowrap;
+      z-index: 100;
+      box-shadow: var(--shadow-md);
+    }
+
+    .wallet-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--gray-800);
+    }
+
+    .wallet-tooltip.visible {
+      display: block;
+      animation: fadeIn 0.15s ease;
+    }
+
+    /* ─── Share button ─── */
+    .share-row {
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      background: transparent;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--gray-600);
+      transition: all 0.15s;
+    }
+
+    .share-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .share-btn:active {
+      transform: scale(0.95);
+      background: var(--gray-200);
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      text-align: center;
+      padding: 24px 20px 16px;
+      opacity: 0;
+      animation: fadeIn 0.4s ease 0.9s forwards;
+    }
+
+    .footer-powered {
+      font-size: 11px;
+      color: var(--gray-400);
+      font-weight: 400;
+    }
+
+    .footer-powered a {
+      color: var(--teal);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-tagline {
+      font-size: 11px;
+      color: var(--gray-400);
+      margin-top: 4px;
+    }
+
+    /* ─── Toast ─── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--gray-900);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .toast-icon.success { color: #4ade80; }
+    .toast-icon.info    { color: #60a5fa; }
+    .toast-icon.error   { color: #f87171; }
+
+    /* ─── Loading state on buttons ─── */
+    .btn.loading {
+      opacity: 0.7;
+      cursor: wait;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+      flex-shrink: 0;
+    }
+
+    .btn.loading .spinner { display: block; }
+    .btn.loading .btn-label-icon { display: none; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="brand-name">Samparka</div>
+    <div class="brand-tagline">Digital Receipt</div>
+    <div class="nfc-indicator">
+      <div class="nfc-pulse-wrapper">
+        <div class="nfc-ring"></div>
+        <div class="nfc-ring"></div>
+        <div class="nfc-ring"></div>
+        <div class="nfc-icon">
+          <!-- NFC waves icon -->
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20.5 2.5C18.7 .8 16.5 0 14.3 0v2c1.7 0 3.3.6 4.5 1.8L20.5 2.5zM14.3 4v2c.8 0 1.5.3 2.1.9l1.4-1.4C17 4.4 15.7 4 14.3 4zM5.5 21.5C7.3 23.2 9.5 24 11.7 24v-2c-1.7 0-3.3-.7-4.5-1.8L5.5 21.5zM11.7 20v-2c-.8 0-1.5-.3-2.1-.8L8.2 18.6C9 19.5 10.3 20 11.7 20zM14.3 22v2c2.2 0 4.4-.8 6.2-2.5l-1.4-1.4C17.9 21.4 16.1 22 14.3 22zM20.5 14l-1.4 1.4C20.3 16.6 21 18.3 21 20h2c0-2.2-.8-4.5-2.5-6zM3 4L1.5 2.5C-.2 4.3-1 6.5-1 8.7h2C1 7 1.7 5.3 3 4zM4.5 5.4L3.1 4C2 5.3 1.3 6.9 1 8.7l2 .4c.2-1.4.8-2.7 1.5-3.7z" opacity=".2"/>
+            <circle cx="13" cy="11" r="2" fill="white"/>
+            <path d="M13 6c2.8 0 5 2.2 5 5h2c0-3.9-3.1-7-7-7v2zm0 2c1.7 0 3 1.3 3 3h2c0-2.8-2.2-5-5-5v2zm-2 3c0-1.1.9-2 2-2V7c-2.2 0-4 1.8-4 4h2zm2 2c-1.1 0-2-.9-2-2H9c0 2.2 1.8 4 4 4v-2z" fill="white"/>
+          </svg>
+        </div>
+      </div>
+      <div class="timestamp" id="timestamp">Just now</div>
+    </div>
+  </div>
+
+  <!-- Page -->
+  <div class="page">
+
+    <!-- Receipt Capture Zone -->
+    <div id="receipt-capture">
+
+      <!-- 1. Shop Header Card -->
+      <div class="card shop-card">
+        <div class="shop-top">
+          <div>
+            <div class="shop-name">Himalayan Coffee House</div>
+            <div class="shop-badges">
+              <span class="badge badge-vat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                VAT Registered
+              </span>
+            </div>
+          </div>
+          <div class="date-time">
+            <div class="date-text">June 4, 2025</div>
+            <div class="time-text">2:34 PM</div>
+          </div>
+        </div>
+
+        <hr class="shop-divider" />
+
+        <div class="shop-meta">
+          <div class="meta-row">
+            <span class="meta-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </span>
+            <span class="meta-text">New Road, Kathmandu, Nepal</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+              </svg>
+            </span>
+            <span class="meta-text">+977-1-4XXXXXX</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+              </svg>
+            </span>
+            <span class="meta-text"><a href="http://www.himalayancoffee.com" target="_blank">www.himalayancoffee.com</a></span>
+          </div>
+        </div>
+
+        <div class="receipt-id-row">
+          <div>
+            <div class="receipt-id-label">Receipt ID</div>
+            <div class="receipt-id-value">#SAM-2024-00142</div>
+          </div>
+          <button class="copy-btn" onclick="copyReceiptId(this)" aria-label="Copy receipt ID">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Items Card -->
+      <div class="card items-card">
+        <div class="items-header">
+          <span class="items-title">Items Ordered</span>
+          <span class="items-count">4 items</span>
+        </div>
+
+        <div class="items-table">
+          <div class="col-headers">
+            <span class="col-h">Item</span>
+            <span class="col-h">Qty</span>
+            <span class="col-h">Price</span>
+          </div>
+
+          <div class="line-item">
+            <span class="item-name">Cappuccino</span>
+            <span class="item-qty">×2</span>
+            <span class="item-price">Rs 360.00</span>
+          </div>
+          <div class="line-item">
+            <span class="item-name">Croissant</span>
+            <span class="item-qty">×1</span>
+            <span class="item-price">Rs 180.00</span>
+          </div>
+          <div class="line-item">
+            <span class="item-name">Momo (8 pcs)</span>
+            <span class="item-qty">×1</span>
+            <span class="item-price">Rs 220.00</span>
+          </div>
+          <div class="line-item">
+            <span class="item-name">Masala Tea</span>
+            <span class="item-qty">×1</span>
+            <span class="item-price">Rs 120.00</span>
+          </div>
+        </div>
+
+        <div class="totals-section">
+          <div class="total-row">
+            <span class="total-label">Subtotal</span>
+            <span class="total-value">Rs 880.00</span>
+          </div>
+          <div class="total-row discount">
+            <span class="total-label">Discount (Member) 🎉</span>
+            <span class="total-value">−Rs 50.00</span>
+          </div>
+          <div class="total-row">
+            <span class="total-label">VAT (13%)</span>
+            <span class="total-value">Rs 107.90</span>
+          </div>
+        </div>
+
+        <div class="grand-total-block">
+          <div>
+            <div class="grand-total-label">Total</div>
+            <div style="font-size:10px;color:var(--teal-dark);font-weight:500;margin-top:2px;">Incl. all taxes</div>
+          </div>
+          <div class="grand-total-value">Rs 937.90</div>
+        </div>
+      </div>
+
+      <!-- 3. Payment Card -->
+      <div class="card payment-card">
+        <div class="payment-grid">
+          <div class="pay-item">
+            <div class="pay-icon-wrap">
+              <!-- Banknote icon -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="1" y="6" width="22" height="13" rx="2"/>
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M5 9.5V9M19 9.5V9M5 15v-.5M19 15v-.5"/>
+              </svg>
+            </div>
+            <div>
+              <div class="pay-label">Payment</div>
+              <div class="pay-value">Cash</div>
+            </div>
+          </div>
+          <div class="pay-item">
+            <div class="pay-icon-wrap">
+              <!-- Person icon -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div>
+              <div class="pay-label">Served by</div>
+              <div class="pay-value">Raju</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="payment-badges">
+          <span class="badge-verified">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            Cryptographically Verified
+          </span>
+          <span class="badge-nfc">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 2.75c3.45 0 6.25 2.8 6.25 6.25S15.45 17.25 12 17.25 5.75 14.45 5.75 11 8.55 4.75 12 4.75zm0 1.5c-2.62 0-4.75 2.13-4.75 4.75s2.13 4.75 4.75 4.75 4.75-2.13 4.75-4.75S14.62 6.25 12 6.25zm0 1.5c.55 0 1.06.11 1.53.3l-4.98 4.98A3.233 3.233 0 018.75 11c0-1.79 1.46-3.25 3.25-3.25zm0 6.5c-.55 0-1.06-.11-1.53-.3l4.98-4.98c.19.47.3.98.3 1.53 0 1.79-1.46 3.25-3.25 3.25z"/>
+            </svg>
+            Received via NFC Tap
+          </span>
+        </div>
+      </div>
+
+      <!-- Watermark -->
+      <div class="receipt-watermark">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--teal)">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <span class="watermark-text">Powered by</span>
+        <span class="watermark-logo">Samparka</span>
+        <span class="watermark-text">· samparka.com</span>
+      </div>
+
+    </div>
+    <!-- /receipt-capture -->
+
+    <!-- Action Buttons -->
+    <div class="actions">
+      <div class="actions-title">Save Receipt</div>
+      <div class="btn-group">
+
+        <button class="btn btn-photo" id="btn-photo" onclick="saveAsPhoto()">
+          <span class="spinner"></span>
+          <span class="btn-label-icon" style="display:flex;align-items:center;gap:9px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Save as Photo
+          </span>
+        </button>
+
+        <button class="btn btn-pdf" id="btn-pdf" onclick="saveAsPDF()">
+          <span class="spinner"></span>
+          <span class="btn-label-icon" style="display:flex;align-items:center;gap:9px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="9" y1="13" x2="15" y2="13"/>
+              <line x1="9" y1="17" x2="12" y2="17"/>
+            </svg>
+            Save as PDF
+          </span>
+        </button>
+
+        <button class="btn btn-wallet" onclick="showWalletTooltip(this)">
+          <span class="btn-label-icon" style="display:flex;align-items:center;gap:9px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/>
+              <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+              <line x1="12" y1="12" x2="12" y2="16"/>
+              <line x1="10" y1="14" x2="14" y2="14"/>
+            </svg>
+            Save to Wallet
+          </span>
+          <span class="coming-soon-badge">Soon</span>
+          <div class="wallet-tooltip" id="wallet-tooltip">
+            Coming Soon — Apple Wallet &amp; Google Pay
+          </div>
+        </button>
+
+      </div>
+
+      <div class="share-row">
+        <button class="share-btn" onclick="shareReceipt()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share Receipt
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-powered">
+        Powered by <a href="https://samparka.com" target="_blank">Samparka</a>
+      </div>
+      <div class="footer-tagline">Paperless receipts for Nepal 🇳🇵</div>
+    </div>
+
+  </div><!-- /page -->
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <svg class="toast-icon success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    <span id="toast-msg">Done!</span>
+  </div>
+
+  <script>
+    // ─── Toast ───
+    let toastTimer = null;
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      const icon = toast.querySelector('.toast-icon');
+      document.getElementById('toast-msg').textContent = msg;
+      icon.className = 'toast-icon ' + type;
+
+      if (type === 'success') {
+        icon.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+      } else if (type === 'info') {
+        icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+      } else {
+        icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+      }
+
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    // ─── Copy Receipt ID ───
+    function copyReceiptId(btn) {
+      navigator.clipboard.writeText('#SAM-2024-00142').then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+        btn.style.color = 'var(--teal)';
+        btn.style.borderColor = 'var(--teal)';
+        setTimeout(() => {
+          btn.innerHTML = orig;
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 1800);
+      }).catch(() => showToast('Copy not available', 'error'));
+    }
+
+    // ─── Share Receipt ───
+    function shareReceipt() {
+      const url = window.location.href;
+      if (navigator.share) {
+        navigator.share({
+          title: 'Receipt from Himalayan Coffee House',
+          text: 'My digital receipt #SAM-2024-00142 — Rs 937.90',
+          url: url
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('Receipt link copied!', 'info');
+        }).catch(() => showToast('Could not copy link', 'error'));
+      }
+    }
+
+    // ─── Wallet Tooltip ───
+    let walletTooltipTimer = null;
+    function showWalletTooltip(btn) {
+      const tip = document.getElementById('wallet-tooltip');
+      tip.classList.add('visible');
+      clearTimeout(walletTooltipTimer);
+      walletTooltipTimer = setTimeout(() => tip.classList.remove('visible'), 2500);
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.btn-wallet')) {
+        document.getElementById('wallet-tooltip').classList.remove('visible');
+      }
+    });
+
+    // ─── Save as Photo ───
+    async function saveAsPhoto() {
+      const btn = document.getElementById('btn-photo');
+      if (btn.classList.contains('loading')) return;
+      btn.classList.add('loading');
+
+      try {
+        const el = document.getElementById('receipt-capture');
+        const canvas = await html2canvas(el, {
+          scale: 3,
+          useCORS: true,
+          backgroundColor: '#F5F5F5',
+          logging: false,
+          windowWidth: 420,
+        });
+
+        const link = document.createElement('a');
+        link.download = 'Samparka-Receipt-SAM2024-00142.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('Receipt saved to photos!');
+      } catch (err) {
+        showToast('Could not save image', 'error');
+      } finally {
+        btn.classList.remove('loading');
+      }
+    }
+
+    // ─── Save as PDF ───
+    async function saveAsPDF() {
+      const btn = document.getElementById('btn-pdf');
+      if (btn.classList.contains('loading')) return;
+      btn.classList.add('loading');
+
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+        const margin = 20;
+        const pageW = doc.internal.pageSize.getWidth();
+        const contentW = pageW - margin * 2;
+        let y = margin;
+
+        const teal      = [29, 158, 117];
+        const tealLight = [232, 247, 241];
+        const gray9     = [33, 33, 33];
+        const gray6     = [117, 117, 117];
+        const gray4     = [189, 189, 189];
+        const green     = [21, 128, 61];
+
+        // Header band
+        doc.setFillColor(...teal);
+        doc.rect(0, 0, pageW, 24, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(255, 255, 255);
+        doc.text('SAMPARKA', pageW / 2, 11, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(200, 240, 225);
+        doc.text('Digital Receipt', pageW / 2, 17, { align: 'center' });
+
+        y = 34;
+
+        // Shop name
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(...gray9);
+        doc.text('Himalayan Coffee House', margin, y);
+        y += 7;
+
+        // VAT badge
+        doc.setFillColor(...tealLight);
+        doc.roundedRect(margin, y - 4, 30, 6, 1.5, 1.5, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(...teal);
+        doc.text('VAT REGISTERED', margin + 15, y, { align: 'center' });
+        y += 8;
+
+        // Shop details
+        const shopDetails = [
+          'New Road, Kathmandu, Nepal',
+          '+977-1-4XXXXXX',
+          'www.himalayancoffee.com',
+        ];
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(...gray6);
+        shopDetails.forEach(line => {
+          doc.text(line, margin, y);
+          y += 5;
+        });
+        y += 2;
+
+        // Date / Receipt row
+        doc.setDrawColor(...gray4);
+        doc.setLineWidth(0.3);
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(margin, y, pageW - margin, y);
+        y += 6;
+
+        doc.setFontSize(9);
+        doc.setTextColor(...gray6);
+        doc.text('Date: June 4, 2025  ·  Time: 2:34 PM', margin, y);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...gray9);
+        doc.text('Receipt ID: #SAM-2024-00142', pageW - margin, y, { align: 'right' });
+        y += 4;
+
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(margin, y, pageW - margin, y);
+        y += 8;
+
+        // Items header
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(...gray6);
+        doc.text('ITEM', margin, y);
+        doc.text('QTY', margin + contentW * 0.6, y, { align: 'center' });
+        doc.text('PRICE', pageW - margin, y, { align: 'right' });
+        y += 3;
+
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(margin, y, pageW - margin, y);
+        y += 5;
+
+        // Items
+        const items = [
+          { name: 'Cappuccino',    qty: '×2', price: 'Rs 360.00' },
+          { name: 'Croissant',     qty: '×1', price: 'Rs 180.00' },
+          { name: 'Momo (8 pcs)', qty: '×1', price: 'Rs 220.00' },
+          { name: 'Masala Tea',    qty: '×1', price: 'Rs 120.00' },
+        ];
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        items.forEach(item => {
+          doc.setTextColor(...gray9);
+          doc.text(item.name, margin, y);
+          doc.setTextColor(...gray6);
+          doc.text(item.qty, margin + contentW * 0.6, y, { align: 'center' });
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...gray9);
+          doc.text(item.price, pageW - margin, y, { align: 'right' });
+          doc.setFont('helvetica', 'normal');
+          y += 7;
+        });
+
+        y += 2;
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(margin, y, pageW - margin, y);
+        y += 6;
+
+        // Totals
+        const totals = [
+          { label: 'Subtotal',           val: 'Rs 880.00',  color: gray6,  bold: false },
+          { label: 'Discount (Member)',   val: '−Rs 50.00',  color: green,  bold: true  },
+          { label: 'VAT (13%)',           val: 'Rs 107.90',  color: gray6,  bold: false },
+        ];
+
+        doc.setFontSize(10);
+        totals.forEach(row => {
+          doc.setFont('helvetica', row.bold ? 'bold' : 'normal');
+          doc.setTextColor(...row.color);
+          doc.text(row.label, margin, y);
+          doc.text(row.val, pageW - margin, y, { align: 'right' });
+          y += 6;
+        });
+
+        y += 2;
+
+        // Grand total band
+        doc.setFillColor(...tealLight);
+        doc.roundedRect(margin, y - 4, contentW, 16, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(...teal);
+        doc.text('TOTAL', margin + 6, y + 4);
+        doc.setFontSize(16);
+        doc.text('Rs 937.90', pageW - margin - 4, y + 5, { align: 'right' });
+        y += 20;
+
+        // Payment details
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(margin, y, pageW - margin, y);
+        y += 8;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(...gray6);
+        doc.text('PAYMENT DETAILS', margin, y);
+        y += 6;
+
+        const payDetails = [
+          ['Payment Method', 'Cash'],
+          ['Served By',       'Raju'],
+          ['Cashier',         'Raju'],
+        ];
+
+        doc.setFontSize(10);
+        payDetails.forEach(([label, val]) => {
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...gray6);
+          doc.text(label + ':', margin, y);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...gray9);
+          doc.text(val, margin + 45, y);
+          y += 6;
+        });
+
+        y += 4;
+
+        // Verified badges
+        doc.setFillColor(...tealLight);
+        doc.roundedRect(margin, y - 4, 52, 7, 2, 2, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(...teal);
+        doc.text('✓ Cryptographically Verified', margin + 26, y, { align: 'center' });
+
+        doc.setFillColor(238, 242, 255);
+        doc.roundedRect(margin + 56, y - 4, 38, 7, 2, 2, 'F');
+        doc.setTextColor(79, 70, 229);
+        doc.text('◉ Received via NFC', margin + 75, y, { align: 'center' });
+
+        // Footer
+        y = doc.internal.pageSize.getHeight() - 16;
+        doc.setLineDashPattern([], 0);
+        doc.setDrawColor(...gray4);
+        doc.line(margin, y - 4, pageW - margin, y - 4);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...gray4);
+        doc.text('Powered by Samparka · samparka.com · Paperless receipts for Nepal', pageW / 2, y + 2, { align: 'center' });
+
+        doc.save('Samparka-Receipt-SAM2024-00142.pdf');
+        showToast('PDF downloaded!');
+      } catch (err) {
+        console.error(err);
+        showToast('Could not generate PDF', 'error');
+      } finally {
+        btn.classList.remove('loading');
+      }
+    }
+
+    // ─── Timestamp ───
+    (function setTimestamp() {
+      const now = new Date();
+      const h = now.getHours(), m = now.getMinutes();
+      const am = h < 12 ? 'AM' : 'PM';
+      const hh = ((h % 12) || 12);
+      const mm = m.toString().padStart(2, '0');
+      document.getElementById('timestamp').textContent = `Today at ${hh}:${mm} ${am}`;
+    })();
+  </script>
+</body>
+</html>
