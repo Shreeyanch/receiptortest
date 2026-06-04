@@ -4,4 +4,4 @@ echo "node_modules/
 .next/
 .DS_Store
 dist/
-build/" > .gitignore
+build/" > .gitignorenode_modules/
