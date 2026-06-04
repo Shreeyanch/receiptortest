@@ -1,7 +1,43 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RECEIPT_DATA } from '@/lib/dummyData';
+import { RECEIPT_DATA, type Receipt } from '@/lib/dummyData';
+
+export interface ApiReceipt {
+  receiptId: string;
+  shopName: string;
+  shopAddress: string;
+  shopPhone: string;
+  cashier: string;
+  items: Array<{ name: string; qty: number; price: number }>;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  paymentMethod: string;
+  createdAt: string;
+}
+
+function mapApiToReceipt(data: ApiReceipt): Receipt {
+  const d = new Date(data.createdAt);
+  return {
+    id:            data.receiptId,
+    shopName:      data.shopName,
+    address:       data.shopAddress,
+    phone:         data.shopPhone,
+    website:       '',
+    date:          d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    time:          d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+    cashier:       data.cashier,
+    receiptId:     data.receiptId,
+    items:         data.items,
+    subtotal:      data.subtotal,
+    discount:      data.discount,
+    vat:           data.tax,
+    total:         data.total,
+    paymentMethod: data.paymentMethod,
+  };
+}
 
 /* ─── Icons ────────────────────────────────────────────────────── */
 const ICamera  = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>;
@@ -45,8 +81,14 @@ function Toast({ msg, show }: { msg: string; show: boolean }) {
 }
 
 /* ─── Main component ────────────────────────────────────────────── */
-export default function ReceiptView({ id }: { id: string }) {
-  const receipt = RECEIPT_DATA;
+export default function ReceiptView({
+  id,
+  receiptData,
+}: {
+  id: string;
+  receiptData?: ApiReceipt | null;
+}) {
+  const receipt: Receipt = receiptData ? mapApiToReceipt(receiptData) : RECEIPT_DATA;
 
   const [isDuplicate,  setIsDuplicate]  = useState(false);
   const [idCopied,     setIdCopied]     = useState(false);
