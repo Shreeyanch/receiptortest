@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation';
 import ReceiptView from '@/components/ReceiptView';
 import { connectDB } from '@/lib/mongodb';
 import { ReceiptModel } from '@/lib/models/Receipt';
@@ -6,7 +5,6 @@ import { RECEIPT_DATA } from '@/lib/dummyData';
 import type { ApiReceipt } from '@/components/ReceiptView';
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
-  // Use dummy shop name for the known dummy ID, otherwise generic title
   if (params.id === RECEIPT_DATA.id) {
     return { title: `Your Receipt — ${RECEIPT_DATA.shopName}` };
   }
@@ -30,7 +28,6 @@ export default async function ReceiptPage({
 }) {
   const { id } = params;
 
-  // Serve the built-in dummy receipt without hitting the DB
   if (id === RECEIPT_DATA.id) {
     return <ReceiptPageShell id={id} receiptData={null} />;
   }
@@ -43,25 +40,57 @@ export default async function ReceiptPage({
       receiptData = {
         receiptId:     doc.receiptId,
         shopName:      doc.shopName,
-        shopAddress:   doc.shopAddress,
-        shopPhone:     doc.shopPhone,
-        cashier:       doc.cashier,
-        items:         doc.items,
-        subtotal:      doc.subtotal,
-        discount:      doc.discount,
-        tax:           doc.tax,
-        total:         doc.total,
-        paymentMethod: doc.paymentMethod,
-        createdAt:     doc.createdAt.toISOString(),
+        shopAddress:   doc.shopAddress  ?? '',
+        shopPhone:     doc.shopPhone    ?? '',
+        cashier:       doc.cashier      ?? '',
+        items:         doc.items        ?? [],
+        subtotal:      doc.subtotal     ?? 0,
+        discount:      doc.discount     ?? 0,
+        tax:           doc.tax          ?? 0,
+        total:         doc.total        ?? 0,
+        paymentMethod: doc.paymentMethod ?? 'Cash',
+        createdAt:     doc.createdAt instanceof Date
+          ? doc.createdAt.toISOString()
+          : new Date().toISOString(),
       };
     }
   } catch {
-    // DB unreachable — fall through to 404 rather than broken UI
+    // DB unreachable — show not-found rather than crashing
   }
 
-  if (!receiptData) notFound();
+  if (!receiptData) {
+    return <ReceiptNotFound />;
+  }
 
   return <ReceiptPageShell id={id} receiptData={receiptData} />;
+}
+
+function ReceiptNotFound() {
+  return (
+    <main className="min-h-screen bg-[#F5F5F5] flex flex-col items-center justify-center px-6">
+      <div className="text-center max-w-xs">
+        <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mx-auto mb-5">
+          <span className="text-4xl">🧾</span>
+        </div>
+        <h1 className="text-xl font-bold text-gray-800 mb-2">Receipt Not Found</h1>
+        <p className="text-sm text-gray-500 leading-relaxed mb-8">
+          This receipt doesn&apos;t exist or may have expired. Check the link and try again.
+        </p>
+        <a
+          href="/"
+          className="inline-flex items-center gap-2 bg-samparka text-white px-6 py-3 rounded-2xl text-sm font-semibold shadow-[0_4px_14px_rgba(29,158,117,0.35)] btn-press"
+        >
+          ← Go Home
+        </a>
+      </div>
+      <p className="mt-8 text-[11px] text-gray-300">
+        Powered by{' '}
+        <a href="https://samparka.com" className="text-samparka font-semibold" target="_blank" rel="noreferrer">
+          Samparka
+        </a>
+      </p>
+    </main>
+  );
 }
 
 function ReceiptPageShell({
