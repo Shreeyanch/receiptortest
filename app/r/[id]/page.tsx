@@ -67,25 +67,25 @@ export default async function ReceiptPage({
 
 function ReceiptNotFound() {
   return (
-    <main className="min-h-screen bg-[#F5F5F5] flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-paper flex flex-col items-center justify-center px-6">
       <div className="text-center max-w-xs">
-        <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mx-auto mb-5">
+        <div className="w-20 h-20 bg-white rounded-3xl border border-ash/10 flex items-center justify-center mx-auto mb-5">
           <span className="text-4xl">🧾</span>
         </div>
-        <h1 className="text-xl font-bold text-gray-800 mb-2">Receipt Not Found</h1>
-        <p className="text-sm text-gray-500 leading-relaxed mb-8">
+        <h1 className="text-xl font-bold text-ink mb-2">Receipt Not Found</h1>
+        <p className="text-sm text-ash leading-relaxed mb-8">
           This receipt doesn&apos;t exist or may have expired. Check the link and try again.
         </p>
         <a
           href="/"
-          className="inline-flex items-center gap-2 bg-samparka text-white px-6 py-3 rounded-2xl text-sm font-semibold shadow-[0_4px_14px_rgba(29,158,117,0.35)] btn-press"
+          className="inline-flex items-center gap-2 bg-pine text-white px-6 py-3 rounded-2xl text-sm font-semibold btn-press"
         >
           ← Go Home
         </a>
       </div>
-      <p className="mt-8 text-[11px] text-gray-300">
+      <p className="mt-8 text-[11px] text-ash/40">
         Powered by{' '}
-        <a href="https://samparka.com" className="text-samparka font-semibold" target="_blank" rel="noreferrer">
+        <a href="https://samparka.com" className="text-pine font-semibold" target="_blank" rel="noreferrer">
           Samparka
         </a>
       </p>
@@ -101,22 +101,22 @@ function ReceiptPageShell({
   receiptData: ApiReceipt | null;
 }) {
   return (
-    <main className="min-h-screen bg-[#F5F5F5]">
+    <main className="min-h-screen bg-paper">
       <div className="max-w-sm mx-auto pb-10">
         <ReceiptView id={id} receiptData={receiptData} />
         <div className="text-center pb-4 px-4">
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-ash">
             Powered by{' '}
             <a
               href="https://samparka.com"
-              className="text-samparka font-semibold"
+              className="text-pine font-semibold"
               target="_blank"
               rel="noreferrer"
             >
               Samparka
             </a>
           </p>
-          <p className="text-[11px] text-gray-300 mt-0.5">
+          <p className="text-[11px] text-ash/40 mt-0.5">
             Paperless receipts for Nepal 🇳🇵
           </p>
         </div>

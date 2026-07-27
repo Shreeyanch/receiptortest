@@ -1,6 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ChevronLeft, Store, Package, Receipt, CreditCard, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import BottomNav from '@/components/BottomNav';
+import { usePreferences } from '@/lib/PreferencesContext';
+import { formatCurrency } from '@/lib/formatCurrency';
 
 const TAX_RATE = 0.13;
 const LINE_W = 32;
@@ -72,17 +78,17 @@ function buildEscPos(data: {
     const lineTotal = item.unitPrice * item.qty;
     const name   = item.name.slice(0, 16).padEnd(16);
     const qty    = ('x' + item.qty).padStart(4);
-    const amount = ('Rs ' + lineTotal.toFixed(0)).padStart(12);
+    const amount = (formatCurrency(lineTotal, 'NPR') + ' ').padStart(12);
     ln(name + qty + amount);
   }
 
   ln(divider('-'));
-  ln(padLine('Subtotal:', `Rs ${data.subtotal.toFixed(2)}`));
-  ln(padLine('Tax (13%):', `Rs ${data.tax.toFixed(2)}`));
+  ln(padLine('Subtotal:', formatCurrency(data.subtotal, 'NPR')));
+  ln(padLine('Tax (13%):', formatCurrency(data.tax, 'NPR')));
   ln(divider('='));
 
   b(ESC, 0x45, 0x01);
-  ln(padLine('TOTAL:', `Rs ${data.total.toFixed(2)}`));
+  ln(padLine('TOTAL:', formatCurrency(data.total, 'NPR')));
   b(ESC, 0x45, 0x00);
 
   ln(divider('='));
@@ -101,20 +107,10 @@ function buildEscPos(data: {
   return new Uint8Array(buf);
 }
 
-/* ── Icons ─────────────────────────────────────────────────────── */
-const ITrash = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-  </svg>
-);
-const ISpin = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
-    <path d="M21 12a9 9 0 11-6.219-8.56"/>
-  </svg>
-);
-
 /* ── Component ─────────────────────────────────────────────────── */
 export default function POSPage() {
+  const { currency, t } = usePreferences();
+  const router = useRouter();
   const [shopName,    setShopName]    = useState('Himalayan Coffee House');
   const [shopAddress, setShopAddress] = useState('Thamel, Kathmandu');
   const [items,       setItems]       = useState<Item[]>([]);
@@ -122,8 +118,8 @@ export default function POSPage() {
   const [payMethod,   setPayMethod]   = useState<PayMethod>('Cash');
   const [esp32IP,     setEsp32IP]     = useState('192.168.1.100');
   const [status,      setStatus]      = useState<Status>('idle');
-  const [result,      setResult]      = useState<{ url: string; id: string } | null>(null);
   const [errMsg,      setErrMsg]      = useState('');
+  const [showEscPos,  setShowEscPos]  = useState(false);
 
   const subtotal = useMemo(() => items.reduce((s, it) => s + it.unitPrice * it.qty, 0), [items]);
   const tax      = useMemo(() => Math.round(subtotal * TAX_RATE * 100) / 100, [subtotal]);
@@ -145,11 +141,9 @@ export default function POSPage() {
   async function handlePrint() {
     if (items.length === 0) return;
     setStatus('sending');
-    setResult(null);
     setErrMsg('');
 
     let receiptId  = '';
-    let receiptUrl = '';
 
     /* 1 · POST to /api/receipts (primary) */
     try {
@@ -173,7 +167,6 @@ export default function POSPage() {
       const json = await res.json();
       if (json.success) {
         receiptId  = json.receiptId;
-        receiptUrl = json.url;
       }
     } catch (e) {
       console.error('API error:', e);
@@ -188,9 +181,8 @@ export default function POSPage() {
       signal:  AbortSignal.timeout(3000),
     }).catch(() => {/* ESP32 unreachable – expected if not on local network */});
 
-    if (receiptUrl) {
-      setResult({ url: receiptUrl, id: receiptId });
-      setStatus('success');
+    if (receiptId) {
+      router.push(`/r/${receiptId}`);
     } else {
       setErrMsg('Could not create receipt. Check your connection.');
       setStatus('error');
@@ -213,14 +205,14 @@ export default function POSPage() {
       for (const it of items) {
         const name   = it.name.slice(0, 16).padEnd(16);
         const qty    = ('x' + it.qty).padStart(4);
-        const amount = ('Rs ' + (it.unitPrice * it.qty).toFixed(0)).padStart(12);
+        const amount = (formatCurrency(it.unitPrice * it.qty, 'NPR') + ' ').padStart(12);
         lines.push(name + qty + amount);
       }
       lines.push(divider('-'));
-      lines.push(padLine('Subtotal:', `Rs ${subtotal.toFixed(2)}`));
-      lines.push(padLine('Tax 13%:', `Rs ${tax.toFixed(2)}`));
+      lines.push(padLine('Subtotal:', formatCurrency(subtotal, 'NPR')));
+      lines.push(padLine('Tax 13%:', formatCurrency(tax, 'NPR')));
       lines.push(divider('='));
-      lines.push(padLine('TOTAL:', `Rs ${total.toFixed(2)}`));
+      lines.push(padLine('TOTAL:', formatCurrency(total, 'NPR')));
       lines.push(divider('='));
       lines.push(padLine('Payment:', payMethod));
       lines.push('');
@@ -235,108 +227,120 @@ export default function POSPage() {
   const PAY_ICONS: Record<PayMethod, string> = { Cash: '💵', Card: '💳', QR: '📱' };
 
   return (
-    <main className="min-h-screen bg-gray-100">
+    <main className="min-h-screen bg-background pb-32">
+      <div className="mx-auto max-w-md flex flex-col">
 
-      {/* Header */}
-      <header className="bg-samparka text-white px-4 py-3 flex items-center gap-3 shadow-md">
-        <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-xl">🖨️</div>
-        <div>
-          <h1 className="font-bold text-[17px] leading-tight">Samparka Virtual POS</h1>
-          <p className="text-[11px] text-white/70">ESC/POS Printer Simulator</p>
-        </div>
-        <a href="/" className="ml-auto text-white/70 hover:text-white text-xs border border-white/30 px-3 py-1.5 rounded-lg transition-colors">
-          ← Home
-        </a>
-      </header>
+        {/* ── Header ── */}
+        <header className="animate-fade-slide-down flex items-center gap-3 px-5 pb-4 pt-7">
+          <Link
+            href="/receipts"
+            aria-label="Go back"
+            className="flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-secondary"
+          >
+            <ChevronLeft className="size-6" strokeWidth={2.4} />
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Virtual POS</h1>
+        </header>
 
-      <div className="max-w-6xl mx-auto p-4 lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start">
+        <div className="flex flex-col gap-5 px-5">
 
-        {/* ── Left: Controls ── */}
-        <div className="space-y-4">
-
-          {/* Shop info */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm">
-            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Shop Info</h2>
-            <input
-              value={shopName}
-              onChange={e => setShopName(e.target.value)}
-              placeholder="Shop name"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-2 focus:outline-none focus:border-samparka focus:ring-1 focus:ring-samparka/20 transition-colors"
-            />
-            <input
-              value={shopAddress}
-              onChange={e => setShopAddress(e.target.value)}
-              placeholder="Address"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-samparka focus:ring-1 focus:ring-samparka/20 transition-colors"
-            />
+          {/* ── Shop Info ── */}
+          <section className="animate-receipt-rise rounded-3xl border border-border/70 bg-card p-5 shadow-[0_12px_40px_-28px_oklch(0.21_0.01_90_/_0.5)]">
+            <div className="mb-4 flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-full bg-background">
+                <Store className="size-4.5 text-gray-700" strokeWidth={2} />
+              </span>
+              <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Shop Info</h2>
+            </div>
+            <div className="space-y-2.5">
+              <input
+                value={shopName}
+                onChange={e => setShopName(e.target.value)}
+                placeholder="Shop name"
+                className="w-full rounded-2xl bg-muted px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/15"
+              />
+              <input
+                value={shopAddress}
+                onChange={e => setShopAddress(e.target.value)}
+                placeholder="Address"
+                className="w-full rounded-2xl bg-muted px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/15"
+              />
+            </div>
           </section>
 
-          {/* Add item */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm">
-            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Add Item</h2>
-            <div className="grid grid-cols-[1fr_72px_100px] gap-2 mb-2">
+          {/* ── Add Item ── */}
+          <section className="animate-receipt-rise rounded-3xl border border-border/70 bg-card p-5 shadow-[0_12px_40px_-28px_oklch(0.21_0.01_90_/_0.5)]" style={{ animationDelay: '0.06s' }}>
+            <div className="mb-4 flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-full bg-background">
+                <Package className="size-4.5 text-gray-700" strokeWidth={2} />
+              </span>
+              <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Add Item</h2>
+            </div>
+            <div className="space-y-2.5">
               <input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 onKeyDown={e => e.key === 'Enter' && addItem()}
                 placeholder="Item name"
-                className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-samparka focus:ring-1 focus:ring-samparka/20 transition-colors"
+                className="w-full rounded-2xl bg-muted px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/15"
               />
-              <input
-                type="number"
-                value={form.qty}
-                onChange={e => setForm(f => ({ ...f, qty: e.target.value }))}
-                min="1"
-                placeholder="Qty"
-                className="border border-gray-200 rounded-xl px-2 py-2.5 text-sm text-center focus:outline-none focus:border-samparka focus:ring-1 focus:ring-samparka/20 transition-colors"
-              />
-              <input
-                type="number"
-                value={form.price}
-                onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                onKeyDown={e => e.key === 'Enter' && addItem()}
-                placeholder="Unit price"
-                className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-samparka focus:ring-1 focus:ring-samparka/20 transition-colors"
-              />
+              <div className="grid grid-cols-2 gap-2.5">
+                <input
+                  type="number"
+                  value={form.qty}
+                  onChange={e => setForm(f => ({ ...f, qty: e.target.value }))}
+                  min="1"
+                  placeholder="Qty"
+                  className="rounded-2xl bg-muted px-4 py-3 text-sm text-center text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/15"
+                />
+                <input
+                  type="number"
+                  value={form.price}
+                  onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && addItem()}
+                  placeholder="Unit price"
+                  className="rounded-2xl bg-muted px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/15"
+                />
+              </div>
+              <button
+                onClick={addItem}
+                className="w-full rounded-full bg-primary py-3 text-sm font-bold text-primary-foreground btn-press transition-all hover:opacity-90 active:scale-[0.98]"
+              >
+                + Add Item
+              </button>
             </div>
-            <button
-              onClick={addItem}
-              className="w-full bg-samparka-light text-samparka-dark py-2.5 rounded-xl text-sm font-bold btn-press hover:bg-samparka-mid transition-colors"
-            >
-              + Add Item
-            </button>
           </section>
 
-          {/* Items list */}
+          {/* ── Items List ── */}
           {items.length > 0 && (
-            <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-                <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Items ({items.length})</h2>
+            <section className="animate-receipt-rise overflow-hidden rounded-3xl border border-border/70 bg-card shadow-[0_12px_40px_-28px_oklch(0.21_0.01_90_/_0.5)]" style={{ animationDelay: '0.12s' }}>
+              <div className="flex items-center justify-between px-5 pb-1 pt-4">
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Items ({items.length})</h2>
                 <button
                   onClick={() => setItems([])}
-                  className="text-[11px] text-red-400 font-semibold hover:text-red-600 transition-colors"
+                  className="text-[11px] font-semibold text-destructive transition-colors hover:opacity-80"
                 >
                   Clear all
                 </button>
               </div>
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-border/60">
                 {items.map((item, i) => (
-                  <div key={i} className="flex items-center px-4 py-3 gap-3">
-                    <div className="w-7 h-7 bg-samparka-light rounded-lg flex items-center justify-center text-[10px] font-bold text-samparka-dark flex-shrink-0">
+                  <div key={i} className="flex items-center px-5 py-3.5 gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
                       {i + 1}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{item.name}</p>
-                      <p className="text-xs text-gray-400">Rs {item.unitPrice.toFixed(2)} × {item.qty}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">{item.name}</p>
+                      <p className="font-mono text-[11px] tabular-nums text-muted-foreground">{formatCurrency(item.unitPrice, 'NPR')} × {item.qty}</p>
                     </div>
-                    <span className="text-sm font-bold text-gray-800 tabular-nums">
-                      Rs {(item.unitPrice * item.qty).toFixed(2)}
+                    <span className="font-mono text-sm font-bold tabular-nums text-foreground">
+                      {formatCurrency(item.unitPrice * item.qty, 'NPR')}
                     </span>
                     <button
                       onClick={() => removeItem(i)}
-                      className="w-7 h-7 flex items-center justify-center rounded-full bg-red-50 text-red-400 hover:bg-red-100 transition-colors btn-press flex-shrink-0"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20 btn-press"
                     >
-                      <ITrash />
+                      <Trash2 className="size-3.5" strokeWidth={2.4} />
                     </button>
                   </div>
                 ))}
@@ -344,163 +348,168 @@ export default function POSPage() {
             </section>
           )}
 
-          {/* Summary */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm">
-            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Summary</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-gray-500">
+          {/* ── Order Summary ── */}
+          <section className="animate-receipt-rise rounded-3xl border border-border/70 bg-card p-5 shadow-[0_12px_40px_-28px_oklch(0.21_0.01_90_/_0.5)]" style={{ animationDelay: '0.18s' }}>
+            <div className="mb-4 flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-full bg-background">
+                <Receipt className="size-4.5 text-gray-700" strokeWidth={2} />
+              </span>
+              <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Order Summary</h2>
+            </div>
+            <div className="space-y-2.5 text-sm">
+              <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span className="tabular-nums">Rs {subtotal.toFixed(2)}</span>
+                <span className="font-mono tabular-nums">{formatCurrency(subtotal, 'NPR')}</span>
               </div>
-              <div className="flex justify-between text-gray-500">
+              <div className="flex justify-between text-muted-foreground">
                 <span>Tax (13%)</span>
-                <span className="tabular-nums">Rs {tax.toFixed(2)}</span>
+                <span className="font-mono tabular-nums">{formatCurrency(tax, 'NPR')}</span>
               </div>
-              <div className="border-t border-gray-100 pt-2 mt-2 flex justify-between font-bold text-base">
-                <span className="text-gray-800">Total</span>
-                <span className="text-samparka tabular-nums">Rs {total.toFixed(2)}</span>
+              <div className="border-t border-border/60 pt-3 mt-1 flex justify-between">
+                <span className="text-base font-bold text-foreground">Total</span>
+                <span className="font-mono text-lg font-black tabular-nums text-primary">{formatCurrency(total, 'NPR')}</span>
               </div>
             </div>
           </section>
 
-          {/* Payment method */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm">
-            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Payment Method</h2>
+          {/* ── Payment Method ── */}
+          <section className="animate-receipt-rise rounded-3xl border border-border/70 bg-card p-5 shadow-[0_12px_40px_-28px_oklch(0.21_0.01_90_/_0.5)]" style={{ animationDelay: '0.24s' }}>
+            <div className="mb-4 flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-full bg-background">
+                <CreditCard className="size-4.5 text-gray-700" strokeWidth={2} />
+              </span>
+              <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Payment Method</h2>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {(['Cash', 'Card', 'QR'] as PayMethod[]).map(m => (
                 <button
                   key={m}
                   onClick={() => setPayMethod(m)}
-                  className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all btn-press ${
+                  className={`flex flex-col items-center gap-1 py-3 rounded-2xl text-sm font-semibold transition-all btn-press ${
                     payMethod === m
-                      ? 'bg-samparka text-white border-samparka shadow-[0_4px_12px_rgba(29,158,117,0.3)]'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-samparka/40'
+                      ? 'bg-primary text-primary-foreground shadow-md'
+                      : 'bg-muted text-muted-foreground hover:bg-border/50'
                   }`}
                 >
-                  <span className="block text-lg mb-0.5">{PAY_ICONS[m]}</span>
+                  <span className="text-lg">{PAY_ICONS[m]}</span>
                   {m}
                 </button>
               ))}
             </div>
           </section>
 
-          {/* ESP32 IP */}
-          <section className="bg-white rounded-2xl p-4 shadow-sm">
-            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">ESP32 Printer IP</h2>
-            <p className="text-[11px] text-gray-400 mb-2">
-              Sends raw ESC/POS to <code className="bg-gray-100 px-1 rounded">http://[IP]/print</code>
-              {' '}— requires HTTP access to local network
-            </p>
+          {/* ── Print Receipt Button ── */}
+          <button
+            onClick={handlePrint}
+            disabled={items.length === 0 || status === 'sending'}
+            className="animate-receipt-rise w-full rounded-full bg-primary py-4 text-base font-bold text-primary-foreground btn-press disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 transition-all hover:opacity-90 active:scale-[0.98]"
+            style={{ animationDelay: '0.3s' }}
+          >
+            {status === 'sending' ? (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
+                  <path d="M21 12a9 9 0 11-6.219-8.56"/>
+                </svg>
+                Sending…
+              </>
+            ) : (
+              <>🖨️ Print Receipt</>
+            )}
+          </button>
+
+          {/* ── Error ── */}
+          {status === 'error' && (
+            <div className="rounded-3xl border border-destructive/20 bg-destructive/5 p-5 animate-slide-up">
+              <p className="text-sm font-semibold text-destructive">⚠️ {errMsg}</p>
+            </div>
+          )}
+
+          {/* ── Receipt Preview ── */}
+          <section className="animate-receipt-rise" style={{ animationDelay: '0.36s' }}>
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Receipt Preview</p>
+            <div className="rounded-3xl border border-border/70 bg-card shadow-[0_12px_40px_-28px_oklch(0.21_0.01_90_/_0.5)] overflow-hidden">
+              {/* Printer top */}
+              <div className="h-4 flex items-center justify-center gap-1.5 rounded-t-3xl bg-foreground">
+                <div className="w-1 h-1 rounded-full bg-primary" />
+                <div className="w-1 h-1 rounded-full bg-marigold" />
+                <div className="w-1 h-1 rounded-full bg-red-400" />
+              </div>
+              <div className="h-2 bg-foreground/80" />
+
+              {/* Paper */}
+              <div className="bg-white px-4 pt-4 pb-2">
+                <pre className="font-receipt whitespace-pre overflow-x-auto text-[10px] leading-[1.45] text-foreground">
+                  {preview.join('\n')}
+                </pre>
+              </div>
+
+              {/* Tear line */}
+              <div className="bg-white px-4">
+                <div className="border-t-2 border-dashed border-border/50" />
+              </div>
+
+              {/* Printer mouth */}
+              <div className="flex items-center justify-center gap-1.5 rounded-b-3xl bg-muted h-8">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div key={i} className="h-1 w-1 rounded-full bg-border" />
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ── ESP32 Printer IP ── */}
+          <section className="animate-receipt-rise rounded-3xl border border-border/70 bg-card p-5 shadow-[0_12px_40px_-28px_oklch(0.21_0.01_90_/_0.5)]" style={{ animationDelay: '0.42s' }}>
+            <div className="mb-3 flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-full bg-background">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
+                  <rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>
+                </svg>
+              </span>
+              <div className="flex-1">
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">ESP32 Printer</h2>
+                <p className="mt-0.5 text-[10px] text-muted-foreground/60">Sends raw ESC/POS over HTTP</p>
+              </div>
+            </div>
             <input
               value={esp32IP}
               onChange={e => setEsp32IP(e.target.value)}
               placeholder="192.168.1.100"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-samparka focus:ring-1 focus:ring-samparka/20 transition-colors"
+              className="w-full rounded-2xl bg-muted px-4 py-3 text-sm font-mono text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/15"
             />
           </section>
 
-          {/* Print button */}
-          <button
-            onClick={handlePrint}
-            disabled={items.length === 0 || status === 'sending'}
-            className="w-full bg-samparka text-white py-5 rounded-2xl text-lg font-bold shadow-[0_4px_20px_rgba(29,158,117,0.4)] btn-press disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all"
-          >
-            {status === 'sending' ? <><ISpin /> Sending…</> : <>🖨️ Print Receipt</>}
-          </button>
-
-          {/* Success */}
-          {status === 'success' && result && (
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-4 animate-slide-up">
-              <p className="text-green-700 font-bold text-sm mb-1">✅ Receipt sent!</p>
-              <p className="text-[11px] text-green-600 mb-2">URL:</p>
-              <a
-                href={result.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-samparka text-[12px] break-all font-mono underline underline-offset-2"
-              >
-                {result.url}
-              </a>
-              <div className="mt-4 flex flex-col items-center gap-2">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Scan to view receipt</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&data=${encodeURIComponent(result.url)}`}
-                  alt="Receipt QR Code"
-                  className="rounded-xl shadow border border-gray-100"
-                  width={180}
-                  height={180}
-                />
-                <button
-                  onClick={() => {
-                    setStatus('idle');
-                    setItems([]);
-                    setResult(null);
-                  }}
-                  className="mt-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  Start new receipt →
-                </button>
+          {/* ── ESC/POS Commands (collapsed, secondary) ── */}
+          <section className="animate-receipt-rise rounded-3xl border border-border/40 bg-card/60 overflow-hidden" style={{ animationDelay: '0.48s' }}>
+            <button
+              onClick={() => setShowEscPos(v => !v)}
+              className="flex w-full items-center justify-between px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">ESC/POS Commands</span>
+              {showEscPos ? (
+                <ChevronUp className="size-4 text-muted-foreground/40" />
+              ) : (
+                <ChevronDown className="size-4 text-muted-foreground/40" />
+              )}
+            </button>
+            {showEscPos && (
+              <div className="border-t border-border/30 px-5 py-3.5 space-y-1 font-mono text-[10px] text-muted-foreground/50">
+                <div><span className="text-primary/70">ESC @</span> — Initialize printer</div>
+                <div><span className="text-primary/70">ESC a 1</span> — Center align</div>
+                <div><span className="text-primary/70">ESC E 1</span> — Bold on</div>
+                <div><span className="text-primary/70">GS ! 10</span> — Double height</div>
+                <div><span className="text-primary/70">ESC i</span> — Full cut</div>
+                <div className="pt-1 text-muted-foreground/30">→ Port 9100 / HTTP /print</div>
               </div>
-            </div>
-          )}
+            )}
+          </section>
 
-          {/* Error */}
-          {status === 'error' && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-              <p className="text-red-700 text-sm font-semibold">⚠️ {errMsg}</p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Right: Receipt preview ── */}
-        <div className="mt-4 lg:mt-0 lg:sticky lg:top-4">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Receipt Preview</p>
-
-          {/* Paper receipt */}
-          <div className="shadow-2xl rounded-sm overflow-visible">
-            {/* Printer top */}
-            <div className="bg-gray-700 rounded-t-lg h-4 flex items-center justify-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-samparka" />
-              <div className="w-1 h-1 rounded-full bg-yellow-400" />
-              <div className="w-1 h-1 rounded-full bg-red-400" />
-            </div>
-            <div className="bg-gray-600 h-2" />
-
-            {/* Paper */}
-            <div className="bg-white px-4 pt-4 pb-2">
-              <pre className="font-receipt text-[10px] leading-[1.45] text-gray-800 overflow-x-auto whitespace-pre">
-                {preview.join('\n')}
-              </pre>
-            </div>
-
-            {/* Tear line */}
-            <div className="bg-white px-4">
-              <div className="border-t-2 border-dashed border-gray-200" />
-            </div>
-
-            {/* Printer mouth */}
-            <div className="bg-gray-100 h-8 flex items-center justify-center gap-1.5 rounded-b-lg">
-              {Array.from({ length: 20 }).map((_, i) => (
-                <div key={i} className="w-1 h-1 rounded-full bg-gray-300" />
-              ))}
-            </div>
-          </div>
-
-          {/* ESC/POS info */}
-          <div className="mt-4 bg-gray-800 rounded-xl p-3">
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">ESC/POS Commands</p>
-            <div className="space-y-1 font-mono text-[10px] text-gray-300">
-              <div><span className="text-samparka">ESC @</span> — Initialize printer</div>
-              <div><span className="text-samparka">ESC a 1</span> — Center align</div>
-              <div><span className="text-samparka">ESC E 1</span> — Bold on</div>
-              <div><span className="text-samparka">GS ! 10</span> — Double height</div>
-              <div><span className="text-samparka">ESC i</span> — Full cut</div>
-              <div className="pt-1 text-gray-500">→ Port 9100 / HTTP /print</div>
-            </div>
-          </div>
+          <p className="pb-2 pt-1 text-center text-[10px] text-muted-foreground/40">
+            <span className="sr-only">Powered by </span>Samparka
+          </p>
         </div>
       </div>
+
+      <BottomNav />
     </main>
   );
 }

@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
+import { PreferencesProvider } from '@/lib/PreferencesContext';
 import './globals.css';
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'Samparka — Digital Receipts',
@@ -14,7 +14,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#1D9E75',
+  themeColor: 'oklch(0.52 0.11 162)',
 };
 
 export default function RootLayout({
@@ -25,10 +25,12 @@ export default function RootLayout({
   modal: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
-        {modal}
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} bg-background`}>
+      <body className="font-sans antialiased">
+        <PreferencesProvider>
+          {children}
+          {modal}
+        </PreferencesProvider>
       </body>
     </html>
   );

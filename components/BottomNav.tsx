@@ -1,106 +1,148 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Home, FilePlus, BarChart3, User, ScanQrCode, type LucideIcon } from 'lucide-react';
 
-function ReceiptIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#1D9E75' : '#9CA3AF'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="9" y1="13" x2="15" y2="13"/>
-      <line x1="9" y1="17" x2="12" y2="17"/>
-    </svg>
-  );
+function handleScan() {
+  if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: 'environment' } })
+      .then((stream) => {
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.style.cssText =
+          'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;object-fit:cover;background:#000';
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText =
+          'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none';
+
+        const scanFrame = document.createElement('div');
+        scanFrame.style.cssText =
+          'width:240px;height:240px;border:3px solid oklch(0.52 0.11 162);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)';
+
+        const hint = document.createElement('p');
+        hint.textContent = 'Point at a QR code';
+        hint.style.cssText =
+          'color:white;font-family:var(--font-geist-sans),sans-serif;font-size:14px;margin-top:24px;text-shadow:0 1px 4px rgba(0,0,0,0.6);pointer-events:none';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '\u2715';
+        closeBtn.style.cssText =
+          'position:absolute;top:48px;right:24px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.2);color:white;border:none;font-size:20px;cursor:pointer;pointer-events:auto;backdrop-filter:blur(8px)';
+
+        const stopStream = () => {
+          stream.getTracks().forEach((t) => t.stop());
+          video.remove();
+          overlay.remove();
+          document.body.style.overflow = '';
+        };
+
+        closeBtn.onclick = stopStream;
+
+        overlay.appendChild(scanFrame);
+        overlay.appendChild(hint);
+        overlay.appendChild(closeBtn);
+
+        document.body.style.overflow = 'hidden';
+        document.body.appendChild(video);
+        document.body.appendChild(overlay);
+      })
+      .catch(() => {
+        window.location.href = '/pos';
+      });
+  } else {
+    window.location.href = '/pos';
+  }
 }
 
-function CameraIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#1D9E75' : '#9CA3AF'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-    </svg>
-  );
+const items: { key: string; label: string; icon: LucideIcon; href: string }[] = [
+  { key: 'home', label: 'Home', icon: Home, href: '/receipts' },
+  { key: 'add', label: 'Add', icon: FilePlus, href: '/pos' },
+  { key: 'stats', label: 'Insights', icon: BarChart3, href: '/analytics' },
+  { key: 'profile', label: 'Profile', icon: User, href: '/profile' },
+];
+
+function pathToKey(pathname: string): string {
+  if (pathname.startsWith('/receipts')) return 'home';
+  if (pathname.startsWith('/pos')) return 'add';
+  if (pathname.startsWith('/analytics')) return 'stats';
+  if (pathname.startsWith('/profile')) return 'profile';
+  return 'home';
 }
 
-function ChartIcon({ active }: { active: boolean }) {
+function NavButton({
+  item,
+  active,
+  onSelect,
+}: {
+  item: (typeof items)[number];
+  active: string;
+  onSelect: (href: string) => void;
+}) {
+  const Icon = item.icon;
+  const isActive = active === item.key;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#1D9E75' : '#9CA3AF'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10"/>
-      <line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-  );
-}
-
-function SettingsIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#1D9E75' : '#9CA3AF'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
-    </svg>
+    <button
+      type="button"
+      onClick={() => onSelect(item.href)}
+      aria-label={item.label}
+      aria-current={isActive ? 'page' : undefined}
+      className={`relative flex h-11 flex-col items-center justify-center rounded-full px-4 transition-colors duration-300 ${
+        isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      <Icon
+        className={`size-5 transition-transform duration-300 ${isActive ? '-translate-y-0.5' : ''}`}
+        strokeWidth={isActive ? 2.4 : 2}
+      />
+      <span
+        className={`mt-0.5 text-[10px] font-semibold tracking-wide transition-all duration-300 ${
+          isActive ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        {item.label}
+      </span>
+    </button>
   );
 }
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const [captureTooltip, setCaptureTooltip] = useState(false);
-  const [settingsTooltip, setSettingsTooltip] = useState(false);
+  const router = useRouter();
+  const active = pathToKey(pathname);
+
+  const handleSelect = (href: string) => {
+    router.push(href);
+  };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40">
-      <div className="max-w-lg mx-auto bg-white border-t border-gray-100 px-2 py-1 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center justify-around">
+    <nav
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md justify-center pb-5"
+      aria-label="Main navigation"
+    >
+      <div className="pointer-events-auto relative flex items-center gap-1 rounded-full border border-border/70 bg-card/85 px-2.5 py-2 shadow-[0_18px_45px_-18px_oklch(0.21_0.01_90_/_0.55)] backdrop-blur-xl">
+        {items.slice(0, 2).map((item) => (
+          <NavButton key={item.key} item={item} active={active} onSelect={handleSelect} />
+        ))}
 
-          {/* Receipts */}
-          <Link href="/receipts" className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-colors">
-            <ReceiptIcon active={pathname === '/receipts'} />
-            <span className={`text-[10px] font-semibold ${pathname === '/receipts' ? 'text-samparka' : 'text-gray-400'}`}>Receipts</span>
-          </Link>
+        {/* Center QR scan button */}
+        <button
+          type="button"
+          onClick={handleScan}
+          aria-label="Scan a receipt QR code"
+          className="group relative mx-1 flex size-14 -translate-y-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_12px_30px_-8px_oklch(0.52_0.11_162_/_0.7)] transition-transform duration-300 hover:scale-105 active:scale-95"
+        >
+          <span className="absolute inset-0 animate-pulse-ring rounded-full" />
+          <ScanQrCode className="size-6 transition-transform duration-300 group-hover:scale-110" strokeWidth={2.25} />
+        </button>
 
-          {/* Capture */}
-          <div className="relative">
-            <button
-              onClick={() => { setCaptureTooltip(true); setTimeout(() => setCaptureTooltip(false), 2000); }}
-              className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl"
-            >
-              <CameraIcon active={false} />
-              <span className="text-[10px] font-semibold text-gray-400">Capture</span>
-            </button>
-            {captureTooltip && (
-              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg z-50">
-                Coming soon
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
-              </div>
-            )}
-          </div>
-
-          {/* Analytics */}
-          <Link href="/analytics" className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-colors">
-            <ChartIcon active={pathname === '/analytics'} />
-            <span className={`text-[10px] font-semibold ${pathname === '/analytics' ? 'text-samparka' : 'text-gray-400'}`}>Analytics</span>
-          </Link>
-
-          {/* Settings */}
-          <div className="relative">
-            <button
-              onClick={() => { setSettingsTooltip(true); setTimeout(() => setSettingsTooltip(false), 2000); }}
-              className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl"
-            >
-              <SettingsIcon active={false} />
-              <span className="text-[10px] font-semibold text-gray-400">Settings</span>
-            </button>
-            {settingsTooltip && (
-              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg z-50">
-                Coming soon
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
-              </div>
-            )}
-          </div>
-
-        </div>
+        {items.slice(2).map((item) => (
+          <NavButton key={item.key} item={item} active={active} onSelect={handleSelect} />
+        ))}
       </div>
-    </div>
+    </nav>
   );
 }

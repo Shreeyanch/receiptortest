@@ -2,12 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens ── */
 :root {
-  --samparka: #1D9E75;
-  --samparka-light: #E8F7F1;
-  --samparka-dark: #157a5a;
+  --background: oklch(0.952 0.008 85);
+  --foreground: oklch(0.18 0.012 85);
+  --card: oklch(1 0 0);
+  --primary: oklch(0.52 0.11 162);
+  --primary-foreground: oklch(0.99 0.01 150);
+  --secondary: oklch(0.94 0.005 90);
+  --muted: oklch(0.94 0.006 100);
+  --muted-foreground: oklch(0.48 0.015 85);
+  --accent: oklch(0.93 0.03 160);
+  --destructive: oklch(0.58 0.22 25);
+  --success: oklch(0.6 0.13 155);
+  --warning: oklch(0.72 0.14 65);
+  --border: oklch(0.88 0.008 100);
+  --ring: oklch(0.52 0.11 162);
+  --radius: 1.1rem;
+  --ink: #1C1F1B;
+  --paper: #F4F2EC;
+  --pine: #1C6B4F;
+  --pine-light: #E8F7F1;
+  --pine-dark: #157a5a;
+  --marigold: #E0A331;
+  --ash: #8A8578;
 }
 
+/* ── Reset ── */
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -17,25 +38,42 @@ html {
 }
 
 body {
-  background-color: #F5F5F5;
+  background-color: var(--background);
+  color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Receipt font helper */
+/* ── Utility classes ── */
 .font-receipt {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--font-geist-mono), 'Courier New', Courier, monospace;
 }
 
-/* Dashed receipt divider */
 .receipt-dash {
-  border-top: 1.5px dashed #9CA3AF;
+  border-top: 1.5px dashed var(--ash);
   margin: 10px 0;
 }
 
 .receipt-double {
-  border-top: 2px solid #374151;
+  border-top: 2px solid var(--ink);
   margin: 8px 0;
+}
+
+/* Perforated tear-off edge */
+.tear-off {
+  position: relative;
+}
+.tear-off::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background:
+    radial-gradient(circle, var(--paper) 5px, transparent 5.5px) repeat-x;
+  background-size: 14px 12px;
+  background-position: 0 0;
 }
 
 /* NFC pulse rings */
@@ -48,7 +86,6 @@ body {
   100% { transform: scale(2.2); opacity: 0; }
 }
 
-/* Slide up for receipt card */
 .animate-slide-up {
   animation: slideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   opacity: 0;
@@ -59,14 +96,12 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Staggered fade-in sections */
 .anim-delay-1 { animation-delay: 0.05s; }
 .anim-delay-2 { animation-delay: 0.15s; }
 .anim-delay-3 { animation-delay: 0.3s; }
 .anim-delay-4 { animation-delay: 0.45s; }
 .anim-delay-5 { animation-delay: 0.6s; }
 
-/* Button press feel */
 .btn-press {
   transition: transform 0.12s, opacity 0.12s;
 }
@@ -75,13 +110,87 @@ body {
   opacity: 0.9;
 }
 
-/* Bottom sheet slide-up */
+.animate-sheet-up {
+  animation: sheetUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 @keyframes sheetUp {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
 }
 
-/* Scrollbar thin */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Animations ── */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-receipt-rise {
+    animation: receiptRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes receiptRise {
+    from { opacity: 0; transform: translateY(14px) scale(0.985); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .animate-fade-slide-down {
+    animation: fadeSlideDown 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-soft-pop {
+    animation: softPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  @keyframes softPop {
+    from { opacity: 0; transform: scale(0.9); }
+    60%  { transform: scale(1.04); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .animate-pulse-ring {
+    animation: pulseRing 2.4s ease-out infinite;
+  }
+
+  @keyframes pulseRing {
+    0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 45%, transparent); }
+    70%  { box-shadow: 0 0 0 18px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+
+  /* ── Chart animations ── */
+  .animate-trend-draw {
+    animation: trendDraw 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes trendDraw {
+    from { stroke-dashoffset: var(--path-length); }
+    to   { stroke-dashoffset: 0; }
+  }
+
+  .animate-trend-fade {
+    animation: trendFade 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes trendFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .animate-bar-grow {
+    animation: barGrow 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes barGrow {
+    from { width: 0; }
+    to   { width: var(--bar-width); }
+  }
+}
