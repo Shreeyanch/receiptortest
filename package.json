@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.19.12",
     "clsx": "^2.1.1",
     "geist": "^1.7.2",
     "html2canvas": "^1.4.1",

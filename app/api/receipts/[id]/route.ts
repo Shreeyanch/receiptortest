@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { ReceiptModel } from '@/lib/models/Receipt';
+import { verifySession } from '@/lib/verifySession';
 
 export async function GET(
   _req: NextRequest,
@@ -39,11 +40,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await req.json();
-    if (!userId) {
+    const session = await verifySession(req);
+    if (!session) {
       return NextResponse.json(
-        { success: false, error: 'userId is required' },
-        { status: 400 }
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
       );
     }
 
@@ -51,7 +52,7 @@ export async function POST(
 
     await ReceiptModel.updateOne(
       { receiptId: params.id },
-      { $addToSet: { viewedBy: userId } }
+      { $addToSet: { viewedBy: session.userId } }
     );
 
     return NextResponse.json({ success: true });

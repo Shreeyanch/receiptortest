@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import { connectDB } from '@/lib/mongodb';
 import { ReceiptModel, type IReceipt } from '@/lib/models/Receipt';
 import { categorizeReceipt } from '@/lib/categories';
+import { verifySession } from '@/lib/verifySession';
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_BASE_URL || 'https://receiptortest.vercel.app';
@@ -36,11 +37,12 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const userId = req.nextUrl.searchParams.get('userId');
-    const filter: Record<string, any> = {};
-    if (userId) {
-      filter.viewedBy = userId;
+    const session = await verifySession(req);
+    if (!session) {
+      return NextResponse.json({ success: true, receipts: [] });
     }
+
+    const filter: Record<string, any> = { viewedBy: session.userId };
 
     const receipts = await ReceiptModel.find(filter)
       .sort({ createdAt: -1 })

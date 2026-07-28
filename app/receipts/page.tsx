@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import {
   Search,
   Bell,
@@ -21,15 +22,13 @@ import { usePreferences } from '@/lib/PreferencesContext';
 import { useReceipts } from '@/lib/ReceiptsContext';
 import { formatCurrency, type CurrencyCode } from '@/lib/formatCurrency';
 
-const FILTERS = ['All', 'Today', 'This Week', 'Processing', 'Refunded'] as const;
+const FILTERS = ['All', 'Today', 'This Week'] as const;
 type Filter = (typeof FILTERS)[number];
 
 const FILTER_TRANSLATION_KEYS: Record<string, string> = {
   All: 'receipts.filter.all',
   Today: 'receipts.filter.today',
   'This Week': 'receipts.filter.thisWeek',
-  Processing: 'receipts.filter.processing',
-  Refunded: 'receipts.filter.refunded',
 };
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -119,19 +118,7 @@ export default function ReceiptsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let userId = '';
-    try {
-      const raw = localStorage.getItem('samparka_auth');
-      if (raw) {
-        const auth = JSON.parse(raw);
-        if (auth.type === 'user' && auth.user?.id) {
-          userId = auth.user.id;
-        }
-      }
-    } catch {}
-
-    const url = userId ? `/api/receipts?userId=${userId}` : '/api/receipts';
-    fetch(url)
+    fetch('/api/receipts')
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.receipts.length > 0) {
@@ -165,10 +152,6 @@ export default function ReceiptsPage() {
           r.time.toLowerCase().includes(k)
         )
       );
-    if (filter === 'Processing')
-      list = list.filter((r) => r.status === 'Processing');
-    if (filter === 'Refunded')
-      list = list.filter((r) => r.status === 'Refunded');
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -271,15 +254,27 @@ export default function ReceiptsPage() {
       <div className="px-4 pt-1">
         <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
           {loading ? (
-            <div className="py-14 text-center">
-              <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <div className="py-10 text-center">
+              <div className="mx-auto mb-3 w-32 h-32">
+                <DotLottieReact
+                  src="/aIXJHzLGsG.lottie"
+                  loop
+                  autoplay
+                />
+              </div>
               <p className="text-sm font-medium text-muted-foreground">
                 {t('receipts.loading')}
               </p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-14 text-center">
-              <p className="mb-3 text-4xl text-muted-foreground/30">🧾</p>
+            <div className="py-10 text-center">
+              <div className="mx-auto mb-3 w-32 h-32">
+                <DotLottieReact
+                  src="/aIXJHzLGsG.lottie"
+                  loop
+                  autoplay
+                />
+              </div>
               <p className="text-sm font-medium text-muted-foreground">
                 {t('receipts.empty.title')}
               </p>

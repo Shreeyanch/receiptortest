@@ -107,12 +107,14 @@ export default function ReceiptView({
   const [idCopied, setIdCopied] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     try {
       const auth = localStorage.getItem('samparka_auth');
       setIsLoggedIn(!!auth);
     } catch {}
+    setAuthChecked(true);
   }, []);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [selectedStars, setSelectedStars] = useState(0);
@@ -341,7 +343,7 @@ export default function ReceiptView({
 
       {/* Actions */}
       <div className="p-4 space-y-3">
-        {!isLoggedIn && (
+        {authChecked && !isLoggedIn && (
           <>
             <p className="text-center text-[10px] font-semibold text-ash uppercase tracking-widest">Share Receipt</p>
 

@@ -17,14 +17,8 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
       const raw = localStorage.getItem('samparka_auth');
       if (raw) {
         const auth = JSON.parse(raw);
-        if (auth.type === 'user' && auth.user?.id) {
-          setIsLoggedIn(true);
-          fetch(`/api/receipts/${id}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: auth.user.id }),
-          });
-        }
+        setIsLoggedIn(true);
+        fetch(`/api/receipts/${id}`, { method: 'POST' });
       }
     } catch {}
   }, [id]);
