@@ -118,6 +118,18 @@ NEXT_PUBLIC_GOOGLE_PLACE_ID=<your-google-business-place-id>
 NEXT_PUBLIC_WHATSAPP_BOT_NUMBER=<whatsapp-number-for-sharing>
 ```
 
+## Test Credentials
+
+### Customer (Normal User)
+- **Phone:** `9812345678`
+- **Password:** `1234`
+
+### Staff (Cafe)
+- **Staff ID:** `1212`
+- **Password:** `1234`
+
+---
+
 ## Tech Stack
 
 - **Frontend:** Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS
