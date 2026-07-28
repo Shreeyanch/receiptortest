@@ -137,7 +137,7 @@ function TrendChart({
         aria-label="Monthly spending trend line chart"
         role="img"
       >
-        <title>Monthly spending trend. Highest point Rs {maxVal.toLocaleString('en-IN')}</title>
+        <title suppressHydrationWarning>Monthly spending trend. Highest point Rs {maxVal.toLocaleString('en-IN')}</title>
 
         {/* Gridlines */}
         {[0, 0.25, 0.5, 0.75, 1].map((frac) => {

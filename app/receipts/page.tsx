@@ -18,6 +18,7 @@ import {
 import BottomNav from '@/components/BottomNav';
 import { type ReceiptListItem } from '@/lib/dummyData';
 import { usePreferences } from '@/lib/PreferencesContext';
+import { useReceipts } from '@/lib/ReceiptsContext';
 import { formatCurrency, type CurrencyCode } from '@/lib/formatCurrency';
 
 const FILTERS = ['All', 'Today', 'This Week', 'Processing', 'Refunded'] as const;
@@ -111,6 +112,7 @@ function ReceiptRow({ item, index }: { item: ReceiptListItem; index: number }) {
 
 export default function ReceiptsPage() {
   const { t, currency } = usePreferences();
+  const { setReceipts: setContextReceipts } = useReceipts();
   const [filter, setFilter] = useState<Filter>('All');
   const [search, setSearch] = useState('');
   const [receipts, setReceipts] = useState<ReceiptListItem[]>([]);
@@ -121,16 +123,24 @@ export default function ReceiptsPage() {
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.receipts.length > 0) {
-          setReceipts(json.receipts);
+          const enriched = json.receipts.map((r: ReceiptListItem & { items?: ReceiptListItem['items'] }) => ({
+            ...r,
+            receiptRef: r.receiptRef || r.receiptId,
+            isDummy: false,
+          }));
+          setReceipts(enriched);
+          setContextReceipts(enriched);
         } else {
-          import('@/lib/dummyData').then((m) => setReceipts(m.MY_RECEIPTS));
+          setReceipts([]);
+          setContextReceipts([]);
         }
       })
       .catch(() => {
-        import('@/lib/dummyData').then((m) => setReceipts(m.MY_RECEIPTS));
+        setReceipts([]);
+        setContextReceipts([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [setContextReceipts]);
 
   const filtered = useMemo(() => {
     let list = receipts;

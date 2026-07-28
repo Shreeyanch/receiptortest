@@ -33,3 +33,33 @@ export async function GET(
     );
   }
 }
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = await req.json();
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'userId is required' },
+        { status: 400 }
+      );
+    }
+
+    await connectDB();
+
+    await ReceiptModel.updateOne(
+      { receiptId: params.id },
+      { $addToSet: { viewedBy: userId } }
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error(`POST /api/receipts/${params.id}:`, error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to record view' },
+      { status: 500 }
+    );
+  }
+}

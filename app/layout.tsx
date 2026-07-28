@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { PreferencesProvider } from '@/lib/PreferencesContext';
+import { ReceiptsProvider } from '@/lib/ReceiptsContext';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -28,8 +29,10 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} bg-background`}>
       <body className="font-sans antialiased">
         <PreferencesProvider>
-          {children}
-          {modal}
+          <ReceiptsProvider>
+            {children}
+            {modal}
+          </ReceiptsProvider>
         </PreferencesProvider>
       </body>
     </html>

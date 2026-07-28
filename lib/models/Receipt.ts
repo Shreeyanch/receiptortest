@@ -12,6 +12,8 @@ export interface IReceipt {
   shopName: string;
   shopAddress: string;
   shopPhone: string;
+  tableNumber?: number;
+  customerName?: string;
   cashier: string;
   items: IReceiptItem[];
   subtotal: number;
@@ -20,6 +22,7 @@ export interface IReceipt {
   total: number;
   paymentMethod: string;
   rawEscPos?: string;
+  viewedBy: string[];
   createdAt: Date;
   updatedAt: Date;
   viewCount: number;
@@ -32,6 +35,8 @@ const ReceiptSchema = new Schema<IReceipt>(
     shopName:      { type: String, required: true },
     shopAddress:   { type: String, default: '' },
     shopPhone:     { type: String, default: '' },
+    tableNumber:   { type: Number },
+    customerName:  { type: String, default: '' },
     cashier:       { type: String, default: '' },
     items:         [{ name: String, qty: Number, price: Number }],
     subtotal:      { type: Number, default: 0 },
@@ -40,6 +45,7 @@ const ReceiptSchema = new Schema<IReceipt>(
     total:         { type: Number, required: true },
     paymentMethod: { type: String, default: 'Cash' },
     rawEscPos:     { type: String },
+    viewedBy:      [{ type: String }],
     viewCount:     { type: Number, default: 0 },
   },
   { timestamps: true }

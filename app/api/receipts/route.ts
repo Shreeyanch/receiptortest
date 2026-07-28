@@ -32,10 +32,17 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    const receipts = await ReceiptModel.find({})
+
+    const userId = req.nextUrl.searchParams.get('userId');
+    const filter: Record<string, any> = {};
+    if (userId) {
+      filter.viewedBy = userId;
+    }
+
+    const receipts = await ReceiptModel.find(filter)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -70,7 +77,15 @@ export async function GET() {
         categoryColor: color,
         time: timeLabel,
         receiptId: r.receiptId,
+        receiptRef: r.receiptId,
         items: r.items,
+        subtotal: r.subtotal ?? 0,
+        discount: r.discount ?? 0,
+        tax: r.tax ?? 0,
+        paymentMethod: r.paymentMethod ?? 'Cash',
+        shopAddress: r.shopAddress ?? '',
+        shopPhone: r.shopPhone ?? '',
+        cashier: r.cashier ?? '',
         createdAt: r.createdAt,
       };
     });

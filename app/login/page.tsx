@@ -1,180 +1,139 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Suspense } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Store, User, ArrowRight } from 'lucide-react';
 
-/**
- * Magic Link Login Page
- *
- * Visited at /login?token=XYZ123
- * Validates the WhatsApp session token and logs the user in.
- * For now this simulates a login — in production you'd set a session cookie,
- * JWT, or similar.
- */
-
-function LoginContent() {
-  const searchParams = useSearchParams();
+export default function LoginPage() {
   const router = useRouter();
-  const token = searchParams.get('token');
+  const [loginId, setLoginId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const [status, setStatus] = useState<'validating' | 'success' | 'error'>(
-    'validating'
-  );
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [showPhoneInput, setShowPhoneInput] = useState(false);
-
-  useEffect(() => {
-    if (!token) {
-      setStatus('error');
+  async function handleLogin() {
+    if (!loginId.trim() || !password.trim()) {
+      setError('Please fill in both fields');
       return;
     }
 
-    // Validate the session token via the API
-    fetch(`/api/whatsapp/session?token=${encodeURIComponent(token)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.session) {
-          setStatus('success');
-          // Store the session in localStorage for now
-          localStorage.setItem('samparka_session', token);
-          if (data.session.phoneNumber) {
-            setPhoneNumber(data.session.phoneNumber);
-          } else {
-            // No phone linked yet — offer to let them enter it
-            setShowPhoneInput(true);
-          }
-        } else {
-          setStatus('error');
-        }
-      })
-      .catch(() => {
-        setStatus('error');
-      });
-  }, [token]);
-
-  async function linkPhone() {
-    if (!phoneNumber.trim() || !token) return;
+    setLoading(true);
+    setError('');
 
     try {
-      const res = await fetch('/api/whatsapp/session', {
-        method: 'PATCH',
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, phoneNumber: phoneNumber.trim() }),
+        body: JSON.stringify({ loginId: loginId.trim(), password: password.trim() }),
       });
       const data = await res.json();
-      if (data.success) {
-        setShowPhoneInput(false);
-        localStorage.setItem('samparka_phone', phoneNumber.trim());
+
+      if (!data.success) {
+        setError(data.error || 'Invalid credentials');
+        setLoading(false);
+        return;
+      }
+
+      /* Store session */
+      localStorage.setItem('samparka_auth', JSON.stringify(data));
+
+      if (data.type === 'staff') {
+        router.push('/staff');
+      } else {
+        router.push('/receipts');
       }
     } catch {
-      // ignore
+      setError('Login failed. Try again.');
+      setLoading(false);
     }
   }
 
-  if (status === 'validating') {
-    return (
-      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-6">
-        <div className="w-12 h-12 border-4 border-pine/30 border-t-pine rounded-full animate-spin mb-4" />
-        <p className="text-ash text-sm font-medium">
-          Validating your session...
-        </p>
-      </div>
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-6">
-        <div className="text-center max-w-xs">
-          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">❌</span>
-          </div>
-          <h1 className="text-xl font-bold text-ink mb-2">
-            Invalid or Expired Link
-          </h1>
-          <p className="text-sm text-ash leading-relaxed mb-6">
-            This magic link is invalid or has expired. Open WhatsApp and ask the
-            Samparka bot for a new link.
-          </p>
-          <button
-            onClick={() => router.push('/receipts')}
-            className="bg-pine text-white px-6 py-3 rounded-2xl text-sm font-semibold btn-press"
-          >
-            ← Go to Receipts
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-6">
-      <div className="text-center max-w-xs">
-        <div className="w-16 h-16 bg-pine/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <span className="text-3xl">✅</span>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
+            <Store className="size-7 text-primary" strokeWidth={2} />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Samparka</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to your account</p>
         </div>
-        <h1 className="text-xl font-bold text-ink mb-2">
-          You&apos;re Logged In!
-        </h1>
-        {phoneNumber && (
-          <p className="text-sm text-ash mb-1">
-            Connected via <span className="font-semibold">{phoneNumber}</span>
-          </p>
-        )}
-        <p className="text-sm text-ash leading-relaxed mb-6">
-          Your receipts are now linked to your phone number.
-        </p>
 
-        {showPhoneInput && (
-          <div className="mb-6 space-y-2">
-            <p className="text-xs text-ash font-medium">
-              Enter your phone number to link your receipts:
-            </p>
-            <div className="flex gap-2">
+        {/* Login card */}
+        <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-[0_12px_40px_-28px_oklch(0.21_0.01_90_/_0.5)]">
+          <div className="space-y-4">
+            {/* Login ID */}
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Phone or Staff ID
+              </label>
               <input
-                type="tel"
-                placeholder="+977 98XXXXXXXX"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                className="flex-1 text-sm border border-ash/10 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine"
+                value={loginId}
+                onChange={e => { setLoginId(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                placeholder="+977-9812345678 or 1212"
+                className="w-full rounded-2xl bg-muted px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/15"
               />
-              <button
-                onClick={linkPhone}
-                className="bg-pine text-white px-4 py-2.5 rounded-xl text-sm font-semibold btn-press"
-              >
-                Link
-              </button>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => { setPassword(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                placeholder="Enter password"
+                className="w-full rounded-2xl bg-muted px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/15"
+              />
+            </div>
+
+            {/* Error */}
+            {error && (
+              <p className="text-sm font-medium text-destructive">{error}</p>
+            )}
+
+            {/* Login button */}
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className="w-full rounded-full bg-primary py-3.5 text-sm font-bold text-primary-foreground btn-press transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <div className="size-5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight className="size-4" strokeWidth={2.4} />
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Hints */}
+          <div className="mt-5 border-t border-border/50 pt-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 mb-2">Demo accounts</p>
+            <div className="space-y-1.5 text-[11px] text-muted-foreground/60">
+              <div className="flex items-center gap-2">
+                <User className="size-3" />
+                <span>User: <span className="font-mono">+977-9812345678</span> / <span className="font-mono">1234</span></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Store className="size-3" />
+                <span>Staff: <span className="font-mono">1212</span> / <span className="font-mono">1234</span></span>
+              </div>
             </div>
           </div>
-        )}
-
-        <button
-          onClick={() => router.push('/receipts')}
-          className="bg-pine text-white px-8 py-3.5 rounded-2xl text-sm font-semibold btn-press hover:bg-pine-dark transition-colors"
-        >
-          View My Receipts →
-        </button>
-      </div>
-
-      <p className="mt-8 text-[11px] text-ash/40">
-        Powered by{' '}
-        <span className="text-pine font-semibold">Samparka</span>
-      </p>
-    </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-paper flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-pine/30 border-t-pine rounded-full animate-spin" />
         </div>
-      }
-    >
-      <LoginContent />
-    </Suspense>
+
+        <p className="mt-6 text-center text-[10px] text-muted-foreground/40">
+          Powered by <span className="font-semibold text-primary">Samparka</span>
+        </p>
+      </div>
+    </div>
   );
 }

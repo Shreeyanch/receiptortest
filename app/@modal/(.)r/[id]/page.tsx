@@ -1,10 +1,62 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import ReceiptView from '@/components/ReceiptView';
+import { useReceipts } from '@/lib/ReceiptsContext';
+import type { ApiReceipt } from '@/components/ReceiptView';
 
 export default function ReceiptModal({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { getById } = useReceipts();
+  const [receiptData, setReceiptData] = useState<ApiReceipt | null>(null);
+  const [isDummy, setIsDummy] = useState(false);
+
+  useEffect(() => {
+    const found = getById(params.id);
+    if (found) {
+      setIsDummy(!!found.isDummy);
+      setReceiptData({
+        receiptId: found.receiptRef,
+        shopName: found.shop,
+        shopAddress: found.shopAddress ?? '',
+        shopPhone: found.shopPhone ?? '',
+        cashier: found.cashier ?? '',
+        items: found.items ?? [],
+        subtotal: found.subtotal ?? 0,
+        discount: found.discount ?? 0,
+        tax: found.tax ?? 0,
+        total: found.amount,
+        paymentMethod: found.paymentMethod ?? 'Cash',
+        createdAt: found.createdAt,
+      });
+      return;
+    }
+
+    fetch(`/api/receipts/${params.id}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.receipt) {
+          const r = json.receipt;
+          setIsDummy(false);
+          setReceiptData({
+            receiptId: r.receiptId,
+            shopName: r.shopName,
+            shopAddress: r.shopAddress ?? '',
+            shopPhone: r.shopPhone ?? '',
+            cashier: r.cashier ?? '',
+            items: r.items ?? [],
+            subtotal: r.subtotal ?? 0,
+            discount: r.discount ?? 0,
+            tax: r.tax ?? 0,
+            total: r.total,
+            paymentMethod: r.paymentMethod ?? 'Cash',
+            createdAt: r.createdAt instanceof Date ? r.createdAt : new Date().toISOString(),
+          });
+        }
+      })
+      .catch(() => {});
+  }, [params.id, getById]);
 
   return (
     /* Backdrop */
@@ -38,7 +90,7 @@ export default function ReceiptModal({ params }: { params: { id: string } }) {
 
         {/* Scrollable receipt content */}
         <div className="overflow-y-auto overscroll-contain pb-8">
-          <ReceiptView id={params.id} />
+          <ReceiptView id={params.id} receiptData={receiptData} isDummy={isDummy} />
         </div>
       </div>
     </div>

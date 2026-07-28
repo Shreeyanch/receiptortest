@@ -4,58 +4,90 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, FilePlus, BarChart3, User, ScanQrCode, type LucideIcon } from 'lucide-react';
 
 function handleScan() {
-  if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment' } })
-      .then((stream) => {
-        const video = document.createElement('video');
-        video.srcObject = stream;
-        video.autoplay = true;
-        video.playsInline = true;
-        video.style.cssText =
-          'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;object-fit:cover;background:#000';
-
-        const overlay = document.createElement('div');
-        overlay.style.cssText =
-          'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none';
-
-        const scanFrame = document.createElement('div');
-        scanFrame.style.cssText =
-          'width:240px;height:240px;border:3px solid oklch(0.52 0.11 162);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)';
-
-        const hint = document.createElement('p');
-        hint.textContent = 'Point at a QR code';
-        hint.style.cssText =
-          'color:white;font-family:var(--font-geist-sans),sans-serif;font-size:14px;margin-top:24px;text-shadow:0 1px 4px rgba(0,0,0,0.6);pointer-events:none';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = '\u2715';
-        closeBtn.style.cssText =
-          'position:absolute;top:48px;right:24px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.2);color:white;border:none;font-size:20px;cursor:pointer;pointer-events:auto;backdrop-filter:blur(8px)';
-
-        const stopStream = () => {
-          stream.getTracks().forEach((t) => t.stop());
-          video.remove();
-          overlay.remove();
-          document.body.style.overflow = '';
-        };
-
-        closeBtn.onclick = stopStream;
-
-        overlay.appendChild(scanFrame);
-        overlay.appendChild(hint);
-        overlay.appendChild(closeBtn);
-
-        document.body.style.overflow = 'hidden';
-        document.body.appendChild(video);
-        document.body.appendChild(overlay);
-      })
-      .catch(() => {
-        window.location.href = '/pos';
-      });
-  } else {
-    window.location.href = '/pos';
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+    alert('Camera not available on this device.');
+    return;
   }
+
+  navigator.mediaDevices
+    .getUserMedia({ video: { facingMode: 'environment' } })
+    .then((stream) => {
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.style.cssText =
+        'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;object-fit:cover;background:#000';
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText =
+        'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none';
+
+      const scanFrame = document.createElement('div');
+      scanFrame.style.cssText =
+        'width:240px;height:240px;border:3px solid oklch(0.52 0.11 162);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)';
+
+      const hint = document.createElement('p');
+      hint.textContent = 'Point at a receipt QR code';
+      hint.style.cssText =
+        'color:white;font-family:var(--font-geist-sans),sans-serif;font-size:14px;margin-top:24px;text-shadow:0 1px 4px rgba(0,0,0,0.6);pointer-events:none';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = '\u2715';
+      closeBtn.style.cssText =
+        'position:absolute;top:48px;right:24px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.2);color:white;border:none;font-size:20px;cursor:pointer;pointer-events:auto;backdrop-filter:blur(8px)';
+
+      let scanning = true;
+
+      const stopStream = () => {
+        scanning = false;
+        stream.getTracks().forEach((t) => t.stop());
+        video.remove();
+        overlay.remove();
+        document.body.style.overflow = '';
+      };
+
+      closeBtn.onclick = stopStream;
+
+      overlay.appendChild(scanFrame);
+      overlay.appendChild(hint);
+      overlay.appendChild(closeBtn);
+
+      document.body.style.overflow = 'hidden';
+      document.body.appendChild(video);
+      document.body.appendChild(overlay);
+
+      const tryScan = async () => {
+        if (!scanning) return;
+
+        if (typeof (window as any).BarcodeDetector !== 'undefined') {
+          try {
+            const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+            const barcodes = await detector.detect(video);
+            if (barcodes.length > 0) {
+              const value = barcodes[0].rawValue;
+              stopStream();
+              if (value.includes('/r/')) {
+                const id = value.split('/r/')[1]?.split('?')[0]?.split('#')[0];
+                if (id) {
+                  window.location.href = `/r/${id}`;
+                  return;
+                }
+              }
+              alert('This is not a Samparka receipt QR code.');
+              return;
+            }
+          } catch {}
+        }
+
+        requestAnimationFrame(tryScan);
+      };
+
+      video.onloadeddata = () => tryScan();
+    })
+    .catch(() => {
+      alert('Could not access camera. Please allow camera permissions.');
+    });
 }
 
 const items: { key: string; label: string; icon: LucideIcon; href: string }[] = [
