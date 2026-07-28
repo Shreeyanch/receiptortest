@@ -18,7 +18,12 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
       if (raw) {
         const auth = JSON.parse(raw);
         setIsLoggedIn(true);
-        fetch(`/api/receipts/${id}`, { method: 'POST' });
+        fetch(`/api/receipts/${id}`, {
+          method: 'POST',
+          credentials: 'include',
+        }).then((res) => {
+          if (!res.ok) console.warn('Failed to record receipt view:', res.status);
+        }).catch(() => {});
       }
     } catch {}
   }, [id]);

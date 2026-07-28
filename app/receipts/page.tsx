@@ -118,7 +118,7 @@ export default function ReceiptsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/receipts')
+    fetch('/api/receipts', { credentials: 'include' })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.receipts.length > 0) {
