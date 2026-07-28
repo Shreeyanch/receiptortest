@@ -119,7 +119,19 @@ export default function ReceiptsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/receipts')
+    let userId = '';
+    try {
+      const raw = localStorage.getItem('samparka_auth');
+      if (raw) {
+        const auth = JSON.parse(raw);
+        if (auth.type === 'user' && auth.user?.id) {
+          userId = auth.user.id;
+        }
+      }
+    } catch {}
+
+    const url = userId ? `/api/receipts?userId=${userId}` : '/api/receipts';
+    fetch(url)
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.receipts.length > 0) {
